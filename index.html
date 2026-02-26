@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SEU Planner</title>
+  <style>
+    :root{
+      --bg:#0b1220; --line: rgba(255,255,255,.12);
+      --text:#eaf0ff; --muted:#b8c3e6;
+      --bad: rgba(255, 91, 106, .16); --badBorder: rgba(255, 91, 106, .35);
+      --good: rgba(50, 213, 131, .14); --goodBorder: rgba(50, 213, 131, .35);
+      --radius: 14px; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: var(--sans); color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% -10%, rgba(106,166,255,.22), transparent 60%),
+        radial-gradient(900px 500px at 100% 10%, rgba(50,213,131,.15), transparent 55%),
+        var(--bg);
+    }
+
+    header{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 16px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+    }
+
+    h1{margin:0; font-size: 26px; font-weight: 950; letter-spacing: .2px}
+    .byline{margin: -6px 0 0; color: var(--muted); font-size: 13px; font-weight: 700}
+    .sub{margin:0; color: var(--muted); font-size: 13px; line-height: 1.35; max-width: 70ch}
+
+    .topBtns{display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap: wrap; padding-top: 6px}
+    .btn{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .btn.primary{background: rgba(106,166,255,.14)}
+    .btn.danger{background: rgba(255,91,106,.14)}
+    .btn:hover{filter:brightness(1.07)}
+    .btn:active{transform: translateY(1px)}
+
+    main{max-width: 1200px; margin: 0 auto; padding: 8px 16px 28px; display:grid; gap: 12px;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+    .cardHead{
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: rgba(0,0,0,.12);
+      display:flex; gap: 10px; align-items:center; justify-content: space-between; flex-wrap: wrap;
+    }
+    .cardHead h2{margin:0; font-size: 14px; letter-spacing:.2px}
+    .addRow{display:flex; gap:10px; align-items:end; flex-wrap: wrap;}
+
+    label{display:block; margin-bottom:6px; font-size:12px; color: var(--muted)}
+    input, select{
+      background: rgba(10,16,35,.55);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 9px 10px;
+      outline:none;
+      font: inherit;
+      min-width: 160px;
+    }
+    input:focus, select:focus{
+      border-color: rgba(106,166,255,.7);
+      box-shadow: 0 0 0 3px rgba(106,166,255,.18);
+    }
+    .field{min-width: 190px}
+    .field.small{min-width: 170px}
+    .field.tiny{min-width: 150px}
+    .field input, .field select{width: 100%}
+
+    .tableWrap{overflow:auto}
+    table{width: 100%; border-collapse: separate; border-spacing: 0; min-width: 920px;}
+    th, td{
+      padding: 10px 10px; border-bottom: 1px solid var(--line);
+      vertical-align: top; text-align: start; font-size: 13px;
+    }
+    th{
+      color: var(--muted); font-weight: 900; background: rgba(0,0,0,.10);
+      position: sticky; top: 0; z-index: 1;
+    }
+    td.mono{font-family: var(--mono); color: var(--muted)}
+    tr.notDone{background: var(--bad); outline: 1px solid var(--badBorder); outline-offset: -1px;}
+    tr.done{background: var(--good); outline: 1px solid var(--goodBorder); outline-offset: -1px;}
+
+    .rowBtns{display:flex; gap:8px; justify-content: flex-end; flex-wrap: wrap;}
+    .mini{
+      border:1px solid var(--line); background: rgba(255,255,255,.06); color: var(--text);
+      border-radius: 10px; padding: 8px 10px; cursor:pointer; font-weight: 900; font-size: 12px; width:auto;
+    }
+    .mini.primary{background: rgba(106,166,255,.14)}
+    .mini.danger{background: rgba(255,91,106,.14)}
+    .mini:hover{filter:brightness(1.07)}
+
+    .muted{color: var(--muted)}
+    .stateLine{
+      padding: 10px 14px; color: var(--muted); font-size: 12px;
+      border-top: 1px solid var(--line);
+      display:flex; justify-content: space-between; gap:10px; flex-wrap: wrap;
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div>
+    <h1 id="titleTxt">SEU Planner</h1>
+    <div class="byline" id="byTxt">By Abdulaziz Alghamdi</div>
+  </div>
+
+  <p class="sub" id="subtitleTxt">Separate tables + time left + Done status (saved on this device).</p>
+
+  <div class="topBtns">
+    <button class="btn primary" id="langBtn" type="button">العربية</button>
+    <button class="btn primary" id="notifBtn" type="button">Enable notifications</button>
+    <button class="btn danger" id="clearAllBtn" type="button">Clear all</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<script>
+  // localStorage stores strings; save JSON text with JSON.stringify() [page:1].
+  const KEY = "student_organizer_v3";
+  const NOTIF_KEY = "student_organizer_v3_notifs"; // tracks which reminders already fired
+
+  const CATEGORIES = [
+    { key: "lectures",    type: "weekly",   en: "Lectures time",              ar: "أوقات المحاضرات" },
+    { key: "exams",       type: "datetime", en: "Exam dates",                 ar: "مواعيد الاختبارات" },
+    { key: "discussions", type: "datetime", en: "Discussion board due dates", ar: "مواعيد تسليم النقاشات" },
+    { key: "assignments", type: "datetime", en: "Assignments due dates",      ar: "مواعيد تسليم الواجبات" },
+    { key: "projects",    type: "datetime", en: "Project due dates",          ar: "مواعيد تسليم المشاريع" },
+    { key: "quizzes",     type: "datetime", en: "Quizzes due dates",          ar: "مواعيد الاختبارات القصيرة" }
+  ];
+
+  const STRINGS = {
+    en: {
+      title: "SEU Planner",
+      by: "By Abdulaziz Alghamdi",
+      subtitle: "Separate tables + time left + Done status (saved on this device).",
+      arabicBtn: "العربية", englishBtn: "English",
+      clearAll: "Clear all",
+      add: "Add",
+      name: "Name",
+      datetime: "Date & time",
+      day: "Day",
+      start: "Start",
+      end: "End",
+      notes: "Notes",
+      left: "Time left",
+      status: "Status",
+      actions: "Actions",
+      done: "Done",
+      notDone: "Not done",
+      delete: "Delete",
+      edit: "Edit",
+      overdue: "Overdue",
+      dueNow: "Due now",
+      confirmClear: "Clear ALL tables?",
+      confirmDelete: "Delete this item?",
+      needFields: "Please fill required fields.",
+      enableNotifs: "Enable notifications",
+      notifsOn: "Notifications enabled",
+      notifsUnsupported: "Notifications are not supported in this browser.",
+      notifsDenied: "Notifications are blocked. Allow them in browser settings.",
+      remind24: "Due in 24 hours",
+      remind12: "Due in 12 hours"
+    },
+    ar: {
+      title: "SEU Planner",
+      by: "By Abdulaziz Alghamdi",
+      subtitle: "جداول منفصلة + الوقت المتبقي + زر تم (الحفظ على هذا الجهاز).",
+      arabicBtn: "العربية", englishBtn: "English",
+      clearAll: "مسح الكل",
+      add: "إضافة",
+      name: "الاسم",
+      datetime: "التاريخ والوقت",
+      day: "اليوم",
+      start: "البداية",
+      end: "النهاية",
+      notes: "ملاحظات",
+      left: "الوقت المتبقي",
+      status: "الحالة",
+      actions: "الإجراءات",
+      done: "تم",
+      notDone: "غير مكتمل",
+      delete: "حذف",
+      edit: "تعديل",
+      overdue: "متأخر",
+      dueNow: "الآن",
+      confirmClear: "هل تريد مسح كل الجداول؟",
+      confirmDelete: "هل تريد حذف هذا العنصر؟",
+      needFields: "رجاءً عبّئ الحقول المطلوبة.",
+      enableNotifs: "تفعيل الإشعارات",
+      notifsOn: "تم تفعيل الإشعارات",
+      notifsUnsupported: "الإشعارات غير مدعومة في هذا المتصفح.",
+      notifsDenied: "الإشعارات محجوبة. فعّلها من إعدادات المتصفح.",
+      remind24: "متبقي 24 ساعة",
+      remind12: "متبقي 12 ساعة"
+    }
+  };
+
+  const DAYS = [
+    {en:"Sunday", ar:"الأحد"},
+    {en:"Monday", ar:"الاثنين"},
+    {en:"Tuesday", ar:"الثلاثاء"},
+    {en:"Wednesday", ar:"الأربعاء"},
+    {en:"Thursday", ar:"الخميس"},
+    {en:"Friday", ar:"الجمعة"},
+    {en:"Saturday", ar:"السبت"}
+  ];
+
+  function getS(){ return STRINGS[state.lang] || STRINGS.en; }
+  function uid(){ return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+  function nowMs(){ return Date.now(); }
+  function minutesFromHHMM(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
+
+  function parseLocalDateTime(value){
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(!raw){
+        return { lang: "en", data: Object.fromEntries(CATEGORIES.map(c => [c.key, []])) };
+      }
+      const st = JSON.parse(raw);
+      st.lang = st.lang || "en";
+      st.data = st.data || {};
+      for(const c of CATEGORIES){
+        if(!Array.isArray(st.data[c.key])) st.data[c.key] = [];
+      }
+      return st;
+    }catch{
+      return { lang: "en", data: Object.fromEntries(CATEGORIES.map(c => [c.key, []])) };
+    }
+  }
+
+  function saveState(){
+    localStorage.setItem(KEY, JSON.stringify(state)); // JSON stringify for objects/arrays [page:1]
+  }
+
+  function loadNotifState(){
+    try{
+      const raw = localStorage.getItem(NOTIF_KEY);
+      if(!raw) return {};
+      const obj = JSON.parse(raw);
+      return (obj && typeof obj === "object") ? obj : {};
+    }catch{
+      return {};
+    }
+  }
+
+  function saveNotifState(obj){
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(obj)); // JSON stringify for objects/arrays [page:1]
+  }
+
+  function fmtCountdown(ms, s){
+    if(ms === 0) return s.dueNow;
+    const abs = Math.abs(ms);
+    const sign = ms < 0 ? -1 : 1;
+    const totalMin = Math.floor(abs / 60000);
+    const days = Math.floor(totalMin / (60*24));
+    const hours = Math.floor((totalMin % (60*24)) / 60);
+    const mins = totalMin % 60;
+    const parts = [];
+    if(days) parts.push(`${days}d`);
+    parts.push(`${String(hours).padStart(2,"0")}h`);
+    parts.push(`${String(mins).padStart(2,"0")}m`);
+    return sign < 0 ? `${s.overdue} • ${parts.join(" ")}` : parts.join(" ");
+  }
+
+  function sortItems(catKey, arr){
+    if(catKey === "lectures"){
+      const order = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      arr.sort((a,b) => {
+        const da = order.indexOf(a.day), db = order.indexOf(b.day);
+        if(da !== db) return da - db;
+        const sa = minutesFromHHMM(a.start), sb = minutesFromHHMM(b.start);
+        if(sa !== sb) return sa - sb;
+        return (a.name||"").localeCompare(b.name||"");
+      });
+      return;
+    }
+
+    arr.sort((a,b) => {
+      const ad = parseLocalDateTime(a.when);
+      const bd = parseLocalDateTime(b.when);
+      const at = ad ? ad.getTime() : Number.POSITIVE_INFINITY;
+      const bt = bd ? bd.getTime() : Number.POSITIVE_INFINITY;
+      if(at !== bt) return at - bt;
+      return (a.name||"").localeCompare(b.name||"");
+    });
+  }
+
+  function esc(str){
+    return String(str).replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+  function escAttr(str){ return esc(str).replace(/`/g,"&#96;"); }
+
+  // Notifications helpers
+  function notificationsSupported(){
+    return ("Notification" in window);
+  }
+
+  async function ensureNotificationPermission(){
+    const s = getS();
+    if(!notificationsSupported()){
+      alert(s.notifsUnsupported);
+      return false;
+    }
+    if(Notification.permission === "granted") return true;
+    if(Notification.permission === "denied"){
+      alert(s.notifsDenied);
+      return false;
+    }
+    const permission = await Notification.requestPermission();
+    if(permission !== "granted"){
+      alert(s.notifsDenied);
+      return false;
+    }
+    return true;
+  }
+
+  function sendNotification(title, body, tag){
+    try{
+      new Notification(title, { body, tag });
+    }catch{
+      // ignore if blocked
+    }
+  }
+
+  function collectAllDueItems(){
+    const out = [];
+    for(const cat of CATEGORIES){
+      if(cat.type !== "datetime") continue;
+      const arr = state.data[cat.key] || [];
+      for(const it of arr){
+        out.push({ catKey: cat.key, item: it });
+      }
+    }
+    return out;
+  }
+
+  function checkAndFireReminders(){
+    if(!notificationsSupported()) return;
+    if(Notification.permission !== "granted") return;
+
+    const s = getS();
+    const notifState = loadNotifState();
+    const now = nowMs();
+
+    const THRESHOLDS = [
+      { key: "24h", ms: 24*60*60*1000, label: s.remind24 },
+      { key: "12h", ms: 12*60*60*1000, label: s.remind12 }
+    ];
+
+    for(const {catKey, item} of collectAllDueItems()){
+      if(item.done) continue;
+
+      const d = parseLocalDateTime(item.when);
+      if(!d) continue;
+      const dueMs = d.getTime();
+      const diff = dueMs - now;
+
+      if(diff <= 0) continue;
+
+      for(const t of THRESHOLDS){
+        const notifId = `${catKey}|${item.id}|${t.key}`;
+        if(notifState[notifId]) continue;
+
+        if(diff <= t.ms){
+          const title = `SEU Planner • ${t.label}`;
+          const body = `${item.name}\n${(item.when||"").replace("T"," ")}`;
+          const tag = notifId;
+          sendNotification(title, body, tag);
+          notifState[notifId] = Date.now();
+        }
+      }
+    }
+
+    saveNotifState(notifState);
+  }
+
+  const app = document.getElementById("app");
+  const langBtn = document.getElementById("langBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const notifBtn = document.getElementById("notifBtn");
+
+  const titleTxt = document.getElementById("titleTxt");
+  const byTxt = document.getElementById("byTxt");
+  const subtitleTxt = document.getElementById("subtitleTxt");
+
+  let state = loadState();
+
+  // ====== DEFAULT DATA SEED (RUNS ONCE) ======
+  const SEEDED_KEY = KEY + "_seeded_v1";
+
+  function seedDefaultDataOnce(){
+    if(localStorage.getItem(SEEDED_KEY) === "1") return;
+
+    const hasAny =
+      Object.values(state.data || {}).some(arr => Array.isArray(arr) && arr.length > 0);
+
+    if(hasAny){
+      localStorage.setItem(SEEDED_KEY, "1");
+      return;
+    }
+
+    state.data.lectures = [
+      { id: uid(), name:"IT 488", day:"Monday",    start:"17:00", end:"17:50", notes:"F2F",    createdAt: Date.now() },
+      { id: uid(), name:"IT 484", day:"Monday",    start:"18:00", end:"18:50", notes:"F2F",    createdAt: Date.now() },
+      { id: uid(), name:"IT 487", day:"Monday",    start:"19:00", end:"19:50", notes:"F2F",    createdAt: Date.now() },
+      { id: uid(), name:"IT 485", day:"Monday",    start:"20:00", end:"20:50", notes:"ONLINE", createdAt: Date.now() },
+
+      { id: uid(), name:"IT 488", day:"Wednesday", start:"17:00", end:"17:50", notes:"ONLINE", createdAt: Date.now() },
+      { id: uid(), name:"IT 484", day:"Wednesday", start:"18:00", end:"18:50", notes:"ONLINE", createdAt: Date.now() },
+      { id: uid(), name:"IT 487", day:"Wednesday", start:"19:00", end:"19:50", notes:"ONLINE", createdAt: Date.now() },
+      { id: uid(), name:"IT 485", day:"Wednesday", start:"20:00", end:"20:50", notes:"ONLINE", createdAt: Date.now() },
+    ];
+
+    state.data.exams = [
+      { id: uid(), name:"IT 487", when:"2026-04-02T19:00", notes:"Midterm",    done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-04-05T16:00", notes:"Midterm",    done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-04-06T19:00", notes:"Midterm",    done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 485", when:"2026-04-08T17:30", notes:"Midterm",    done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-05-19T20:00", notes:"FINAL EXAM", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-05-20T20:00", notes:"FINAL EXAM", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 485", when:"2026-06-03T17:30", notes:"FINAL EXAM", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-06-07T20:00", notes:"FINAL EXAM", done:false, createdAt: Date.now() },
+    ];
+
+    state.data.discussions = [
+      { id: uid(), name:"IT 484", when:"2026-03-05T23:59", notes:"Discussion board", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 485", when:"2026-03-05T23:59", notes:"Discussion board", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-03-05T23:59", notes:"Discussion board", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-03-05T23:59", notes:"Discussion board", done:false, createdAt: Date.now() },
+    ];
+
+    state.data.assignments = [
+      { id: uid(), name:"IT 485", when:"2026-03-29T23:59", notes:"Assignment 1", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-03-30T23:59", notes:"Assignment 1", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-03-31T23:59", notes:"Assignment 1 التاريخ غير مؤكد لحد الآن", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-04-01T23:59", notes:"Assignment 1", done:false, createdAt: Date.now() },
+
+      { id: uid(), name:"IT 485", when:"2026-04-26T23:59", notes:"Assignment 2", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-04-27T23:59", notes:"Assignment 2", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-04-28T23:59", notes:"Assignment 2", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-04-29T23:59", notes:"Assignment 2", done:false, createdAt: Date.now() },
+    ];
+
+    state.data.projects = [
+      { id: uid(), name:"IT 485", when:"2026-05-03T23:59", notes:"PROJECT", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-05-04T23:59", notes:"PROJECT", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-05-05T23:59", notes:"PROJECT", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-05-06T23:59", notes:"PROJECT", done:false, createdAt: Date.now() },
+    ];
+
+    state.data.quizzes = [
+      { id: uid(), name:"IT 485", when:"2026-05-03T23:59", notes:"QUIZ", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 484", when:"2026-05-04T23:59", notes:"QUIZ", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 487", when:"2026-05-05T23:59", notes:"QUIZ التاريخ غير مؤكد حتى الآن", done:false, createdAt: Date.now() },
+      { id: uid(), name:"IT 488", when:"2026-05-06T23:59", notes:"QUIZ", done:false, createdAt: Date.now() },
+    ];
+
+    for(const cat of CATEGORIES){
+      sortItems(cat.key, state.data[cat.key]);
+    }
+
+    saveState();
+    localStorage.setItem(SEEDED_KEY, "1");
+  }
+  // ===========================================
+
+  function setLang(lang){
+    state.lang = lang;
+    saveState();
+    document.documentElement.lang = lang === "ar" ? "ar" : "en";
+    document.documentElement.dir  = lang === "ar" ? "rtl" : "ltr";
+    render();
+  }
+
+  function updateNotifButtonLabel(){
+    const s = getS();
+    if(!notificationsSupported()){
+      notifBtn.textContent = s.enableNotifs;
+      notifBtn.disabled = true;
+      return;
+    }
+    notifBtn.disabled = false;
+    notifBtn.textContent = (Notification.permission === "granted") ? s.notifsOn : s.enableNotifs;
+  }
+
+  function render(){
+    const s = getS();
+
+    titleTxt.textContent = s.title;
+    byTxt.textContent = s.by;
+    subtitleTxt.textContent = s.subtitle;
+
+    langBtn.textContent = (state.lang === "ar") ? s.englishBtn : s.arabicBtn;
+    clearAllBtn.textContent = s.clearAll;
+
+    updateNotifButtonLabel();
+
+    app.innerHTML = "";
+
+    for(const cat of CATEGORIES){
+      const card = document.createElement("section");
+      card.className = "card";
+
+      const head = document.createElement("div");
+      head.className = "cardHead";
+
+      const h2 = document.createElement("h2");
+      h2.textContent = state.lang === "ar" ? cat.ar : cat.en;
+
+      const addRow = document.createElement("div");
+      addRow.className = "addRow";
+
+      const nameField = document.createElement("div");
+      nameField.className = "field";
+      nameField.innerHTML = `<label>${s.name}</label>`;
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.placeholder = s.name;
+      nameField.appendChild(nameInput);
+
+      const notesField = document.createElement("div");
+      notesField.className = "field";
+      notesField.innerHTML = `<label>${s.notes}</label>`;
+      const notesInput = document.createElement("input");
+      notesInput.type = "text";
+      notesInput.placeholder = s.notes;
+      notesField.appendChild(notesInput);
+
+      addRow.appendChild(nameField);
+
+      let whenInput=null, daySel=null, startInput=null, endInput=null;
+
+      if(cat.type === "datetime"){
+        const whenField = document.createElement("div");
+        whenField.className = "field small";
+        whenField.innerHTML = `<label>${s.datetime}</label>`;
+        whenInput = document.createElement("input");
+        whenInput.type = "datetime-local";
+        whenField.appendChild(whenInput);
+        addRow.appendChild(whenField);
+      }else{
+        const dayField = document.createElement("div");
+        dayField.className = "field tiny";
+        dayField.innerHTML = `<label>${s.day}</label>`;
+        daySel = document.createElement("select");
+        for(const d of DAYS){
+          const opt = document.createElement("option");
+          opt.value = d.en;
+          opt.textContent = (state.lang === "ar") ? d.ar : d.en;
+          daySel.appendChild(opt);
+        }
+        dayField.appendChild(daySel);
+
+        const startField = document.createElement("div");
+        startField.className = "field tiny";
+        startField.innerHTML = `<label>${s.start}</label>`;
+        startInput = document.createElement("input");
+        startInput.type = "time";
+        startField.appendChild(startInput);
+
+        const endField = document.createElement("div");
+        endField.className = "field tiny";
+        endField.innerHTML = `<label>${s.end}</label>`;
+        endInput = document.createElement("input");
+        endInput.type = "time";
+        endField.appendChild(endInput);
+
+        addRow.appendChild(dayField);
+        addRow.appendChild(startField);
+        addRow.appendChild(endField);
+      }
+
+      addRow.appendChild(notesField);
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "btn primary";
+      addBtn.type = "button";
+      addBtn.textContent = s.add;
+
+      addBtn.addEventListener("click", () => {
+        const name = nameInput.value.trim();
+        const notes = notesInput.value.trim();
+
+        if(cat.type === "datetime"){
+          const when = (whenInput.value || "").trim();
+          if(!name || !when){ alert(s.needFields); return; }
+          if(!parseLocalDateTime(when)){ alert(s.needFields); return; }
+          state.data[cat.key].push({ id: uid(), name, when, notes, done:false, createdAt: Date.now() });
+        }else{
+          const day = daySel.value;
+          const start = (startInput.value || "").trim();
+          const end = (endInput.value || "").trim();
+          if(!name || !day || !start || !end){ alert(s.needFields); return; }
+          if(minutesFromHHMM(end) <= minutesFromHHMM(start)){
+            alert(state.lang === "ar" ? "وقت النهاية يجب أن يكون بعد البداية." : "End time must be after start.");
+            return;
+          }
+          state.data[cat.key].push({ id: uid(), name, day, start, end, notes, createdAt: Date.now() });
+        }
+
+        sortItems(cat.key, state.data[cat.key]);
+        saveState();
+
+        nameInput.value = "";
+        notesInput.value = "";
+        if(whenInput) whenInput.value = "";
+        if(startInput) startInput.value = "";
+        if(endInput) endInput.value = "";
+
+        render();
+        checkAndFireReminders();
+      });
+
+      addRow.appendChild(addBtn);
+
+      head.appendChild(h2);
+      head.appendChild(addRow);
+
+      const tableWrap = document.createElement("div");
+      tableWrap.className = "tableWrap";
+      const table = document.createElement("table");
+
+      const thead = document.createElement("thead");
+
+      if(cat.key === "lectures"){
+        thead.innerHTML = `
+          <tr>
+            <th style="min-width:240px">${s.name}</th>
+            <th style="min-width:150px">${s.day}</th>
+            <th style="min-width:120px">${s.start}</th>
+            <th style="min-width:120px">${s.end}</th>
+            <th style="min-width:320px">${s.notes}</th>
+            <th style="min-width:190px">${s.actions}</th>
+          </tr>
+        `;
+      }else{
+        thead.innerHTML = `
+          <tr>
+            <th style="min-width:240px">${s.name}</th>
+            <th style="min-width:180px">${s.datetime}</th>
+            <th style="min-width:320px">${s.notes}</th>
+            <th style="min-width:160px">${s.left}</th>
+            <th style="min-width:120px">${s.status}</th>
+            <th style="min-width:190px">${s.actions}</th>
+          </tr>
+        `;
+      }
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      const items = (state.data[cat.key] || []).slice();
+      sortItems(cat.key, items);
+
+      if(items.length === 0){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.className = "muted";
+        td.textContent = state.lang === "ar" ? "لا توجد عناصر." : "No items.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+
+      for(const it of items){
+        const tr = document.createElement("tr");
+        if(cat.key !== "lectures") tr.className = it.done ? "done" : "notDone";
+
+        const actionsTd = document.createElement("td");
+        const btnBox = document.createElement("div");
+        btnBox.className = "rowBtns";
+
+        if(cat.key !== "lectures"){
+          const doneBtn = document.createElement("button");
+          doneBtn.type = "button";
+          doneBtn.className = "mini primary";
+          doneBtn.textContent = it.done ? (state.lang === "ar" ? "إرجاع" : "Undo") : s.done;
+          doneBtn.addEventListener("click", () => {
+            const arr = state.data[cat.key];
+            const idx = arr.findIndex(x => x.id === it.id);
+            if(idx < 0) return;
+            arr[idx].done = !arr[idx].done;
+            saveState();
+            render();
+          });
+          btnBox.appendChild(doneBtn);
+        }
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "mini";
+        editBtn.textContent = s.edit;
+        editBtn.addEventListener("click", () => {
+          const newName = prompt(s.name, it.name);
+          if(newName === null) return;
+          const name = newName.trim();
+          if(!name){ alert(s.needFields); return; }
+
+          let updated = { ...it, name };
+
+          if(cat.key === "lectures"){
+            const newDay = prompt(s.day + " (Sunday..Saturday)", it.day);
+            if(newDay === null) return;
+            const newStart = prompt(s.start + " (HH:mm)", it.start);
+            if(newStart === null) return;
+            const newEnd = prompt(s.end + " (HH:mm)", it.end);
+            if(newEnd === null) return;
+
+            const day = newDay.trim();
+            const start = newStart.trim();
+            const end = newEnd.trim();
+            if(!day || !start || !end){ alert(s.needFields); return; }
+            if(minutesFromHHMM(end) <= minutesFromHHMM(start)){
+              alert(state.lang === "ar" ? "وقت النهاية يجب أن يكون بعد البداية." : "End time must be after start.");
+              return;
+            }
+            updated.day = day;
+            updated.start = start;
+            updated.end = end;
+          }else{
+            const newWhen = prompt(s.datetime + " (YYYY-MM-DDTHH:mm)", it.when);
+            if(newWhen === null) return;
+            const when = newWhen.trim();
+            if(!when || !parseLocalDateTime(when)){ alert(s.needFields); return; }
+            updated.when = when;
+          }
+
+          const newNotes = prompt(s.notes, it.notes || "");
+          if(newNotes === null) return;
+          updated.notes = (newNotes || "").trim();
+
+          const arr = state.data[cat.key];
+          const idx = arr.findIndex(x => x.id === it.id);
+          if(idx < 0) return;
+          arr[idx] = updated;
+          sortItems(cat.key, arr);
+          saveState();
+          render();
+          checkAndFireReminders();
+        });
+
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "mini danger";
+        delBtn.textContent = s.delete;
+        delBtn.addEventListener("click", () => {
+          if(!confirm(s.confirmDelete)) return;
+          state.data[cat.key] = state.data[cat.key].filter(x => x.id !== it.id);
+          saveState();
+          render();
+        });
+
+        btnBox.appendChild(editBtn);
+        btnBox.appendChild(delBtn);
+        actionsTd.appendChild(btnBox);
+
+        if(cat.key === "lectures"){
+          tr.innerHTML = `
+            <td>${esc(it.name)}</td>
+            <td>${esc(it.day)}</td>
+            <td class="mono">${esc(it.start)}</td>
+            <td class="mono">${esc(it.end)}</td>
+            <td>${esc(it.notes||"")}</td>
+          `;
+          tr.appendChild(actionsTd);
+        }else{
+          tr.innerHTML = `
+            <td>${esc(it.name)}</td>
+            <td class="mono">${esc((it.when||"").replace("T"," "))}</td>
+            <td>${esc(it.notes||"")}</td>
+            <td class="mono" data-role="left" data-when="${escAttr(it.when||"")}"></td>
+            <td>${it.done ? esc(s.done) : esc(s.notDone)}</td>
+          `;
+          tr.appendChild(actionsTd);
+        }
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+
+      const foot = document.createElement("div");
+      foot.className = "stateLine";
+      const count = (state.data[cat.key] || []).length;
+      foot.innerHTML = `<span>${count} ${state.lang === "ar" ? "عنصر" : "items"}</span><span>${state.lang === "ar" ? "يتم الحفظ تلقائياً" : "Auto-saved"}</span>`;
+
+      card.appendChild(head);
+      card.appendChild(tableWrap);
+      card.appendChild(foot);
+
+      app.appendChild(card);
+    }
+
+    updateCountdowns();
+  }
+
+  function updateCountdowns(){
+    const s = getS();
+    const cells = document.querySelectorAll('td[data-role="left"]');
+    const now = nowMs();
+
+    for(const td of cells){
+      const when = td.dataset.when;
+      const d = parseLocalDateTime(when);
+      td.textContent = d ? fmtCountdown(d.getTime() - now, s) : "—";
+    }
+  }
+
+  // Buttons
+  langBtn.addEventListener("click", () => setLang(state.lang === "ar" ? "en" : "ar"));
+
+  notifBtn.addEventListener("click", async () => {
+    const ok = await ensureNotificationPermission();
+    updateNotifButtonLabel();
+    if(ok) checkAndFireReminders();
+  });
+
+  clearAllBtn.addEventListener("click", () => {
+    const s = getS();
+    if(!confirm(s.confirmClear)) return;
+    state.data = Object.fromEntries(CATEGORIES.map(c => [c.key, []]));
+    saveState();
+    localStorage.setItem(NOTIF_KEY, JSON.stringify({})); // JSON stringify for objects/arrays [page:1]
+    render();
+  });
+
+  // Timers
+  setInterval(updateCountdowns, 30000);
+  setInterval(checkAndFireReminders, 5 * 60 * 1000);
+
+  // init
+  seedDefaultDataOnce();
+  setLang(state.lang || "en");
+  setTimeout(checkAndFireReminders, 1000);
+</script>
+</body>
+</html>
